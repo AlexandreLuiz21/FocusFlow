@@ -46,8 +46,8 @@ export interface Task {
   plannedMinutes: number;
   actualSeconds: number;
   createdAt: number;
-  deadline?: number; // Timestamp
-  scheduledSlots: ScheduleSlot[];
+  deadline?: number; // Timestamp da meta final
+  scheduledSlots: ScheduleSlot[]; // Agenda de execução
   sessions: FocusSession[];
 }
 

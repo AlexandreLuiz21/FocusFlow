@@ -68,16 +68,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({ onClose, onSubmit, taskToE
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-8 border-b border-slate-100 flex-shrink-0">
-          <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-            {taskToEdit ? 'Editar Meta' : 'Nova Meta & Plano'}
-          </h2>
+          <div className="space-y-1">
+            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+              {taskToEdit ? 'Editar Meta' : 'Nova Meta & Agenda'}
+            </h2>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Defina o prazo e quando pretende trabalhar</p>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <X className="w-6 h-6 text-slate-400" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto">
-          {/* Informações Básicas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
                <div className="space-y-1.5">
@@ -85,32 +87,32 @@ export const TaskModal: React.FC<TaskModalProps> = ({ onClose, onSubmit, taskToE
                 <input 
                   autoFocus
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-slate-800 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                  placeholder="Ex: Finalizar protótipo do App"
+                  placeholder="Ex: Finalizar protótipo"
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-slate-600 ml-1">Prazo Final (Deadline)</label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input 
-                    type="date"
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-12 pr-5 py-3 text-slate-800 focus:border-indigo-500 outline-none font-medium"
-                    value={formData.deadline}
-                    onChange={e => setFormData({...formData, deadline: e.target.value})}
-                  />
-                </div>
+                <label className="text-sm font-bold text-slate-600 ml-1 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                  Prazo Final (Deadline)
+                </label>
+                <input 
+                  type="date"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-slate-800 focus:border-indigo-500 outline-none font-medium"
+                  value={formData.deadline}
+                  onChange={e => setFormData({...formData, deadline: e.target.value})}
+                />
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-slate-600 ml-1">Detalhes</label>
+                <label className="text-sm font-bold text-slate-600 ml-1">Notas e Contexto</label>
                 <textarea 
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-slate-800 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400 min-h-[118px] resize-none font-medium"
-                  placeholder="Notas adicionais..."
+                  placeholder="Detalhes importantes..."
                   value={formData.description}
                   onChange={e => setFormData({...formData, description: e.target.value})}
                 />
@@ -140,7 +142,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ onClose, onSubmit, taskToE
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-slate-600 ml-1">Esforço Total (min)</label>
+                <label className="text-sm font-bold text-slate-600 ml-1">Estimativa (min)</label>
                 <input 
                   type="number"
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-slate-800 focus:border-indigo-500 outline-none font-mono font-bold"
@@ -150,15 +152,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({ onClose, onSubmit, taskToE
               </div>
           </div>
 
-          {/* Agenda de Execução */}
           <div className="space-y-4 pt-4 border-t border-slate-100">
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                   <Clock className="w-5 h-5 text-indigo-500" />
-                  Agenda de Execução
+                  Planejamento da Agenda
                 </h3>
-                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Quando você vai trabalhar nisso?</p>
               </div>
               <button 
                 type="button"
@@ -210,8 +210,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ onClose, onSubmit, taskToE
                 </div>
               ))}
               {slots.length === 0 && (
-                <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 text-sm italic">
-                  Sem horários agendados. Adicione um slot para organizar sua semana.
+                <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 text-sm italic">
+                  Tarefa sem horário agendado. Ela ficará no backlog.
                 </div>
               )}
             </div>
