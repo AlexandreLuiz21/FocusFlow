@@ -6,16 +6,24 @@ const STORAGE_KEY = 'focusflow_tasks';
 export const storage = {
   getTasks: (): Task[] => {
     if (typeof window === 'undefined') return [];
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error('Error loading tasks:', e);
+      return [];
+    }
   },
 
   saveTasks: (tasks: Task[]): void => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch (e) {
+      console.error('Error saving tasks:', e);
+    }
   },
 
-  // Mock methods to represent future database operations
   async fetchTasks(): Promise<Task[]> {
     return this.getTasks();
   },
