@@ -1,2 +1,176 @@
-// File disabled to prevent build conflicts with root index.tsx structure.
-export default function Page() { return null; }
+'use client';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Sidebar } from '../components/Sidebar';
+import { KanbanBoard } from '../components/KanbanBoard';
+import { FocusZone } from '../components/FocusZone';
+import { Dashboard } from '../components/Dashboard';
+import { TaskModal } from '../components/TaskModal';
+import { Task, TaskStatus, TaskPriority, Category, FocusSession } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import { storage } from '../lib/storage';
+
+export default function Home() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [activeView, setActiveView] = useState<'board' | 'dashboard' | 'ai'>('board');
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [aiInsight, setAiInsight] = useState<string>('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  useEffect(() => {
+    const savedTasks = storage.getTasks();
+    setTasks(savedTasks);
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      storage.saveTasks(tasks);
+    }
+  }, [tasks, isLoaded]);
+
+  const saveTask = (taskData: Partial<Task>) => {
+    if (editingTask) {
+      setTasks(prev => prev.map(t => 
+        t.id === editingTask.id ? { ...t, ...taskData } : t
+      ));
+    } else {
+      const newTask: Task = {
+        id: crypto.randomUUID(),
+        title: taskData.title || 'Nova Tarefa',
+        description: taskData.description || '',
+        category: taskData.category || Category.WORK,
+        priority: taskData.priority || TaskPriority.MEDIUM,
+        status: TaskStatus.PLANNED,
+        plannedMinutes: taskData.plannedMinutes || 30,
+        actualSeconds: 0,
+        createdAt: Date.now(),
+        deadline: taskData.deadline,
+        scheduledSlots: taskData.scheduledSlots || [],
+        sessions: [],
+      };
+      setTasks(prev => [...prev, newTask]);
+    }
+    setIsTaskModalOpen(false);
+    setEditingTask(null);
+  };
+
+  const updateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        let updatedTask = { ...t, status: newStatus };
+        
+        if (newStatus === TaskStatus.DOING) {
+          const newSession: FocusSession = {
+            id: crypto.randomUUID(),
+            startTime: Date.now(),
+            durationSeconds: 0,
+            interrupted: false
+          };
+          updatedTask.sessions = [...(updatedTask.sessions || []), newSession];
+        } else if (t.status === TaskStatus.DOING) {
+          updatedTask.sessions = updatedTask.sessions.map(s => {
+            if (!s.endTime) {
+              const end = Date.now();
+              const dur = Math.floor((end - s.startTime) / 1000);
+              return { ...s, endTime: end, durationSeconds: dur };
+            }
+            return s;
+          });
+          updatedTask.actualSeconds = updatedTask.sessions.reduce((acc, s) => acc + (s.durationSeconds || 0), 0);
+        }
+        return updatedTask;
+      }
+      return t;
+    }));
+  }, []);
+
+  const handleGenerateAiInsight = async () => {
+    if (tasks.length === 0) {
+      setAiInsight("Adicione algumas tarefas para análise.");
+      return;
+    }
+    setIsAiLoading(true);
+    setAiInsight('');
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const summary = tasks.map(t => `- ${t.title}: ${Math.floor(t.actualSeconds/60)}m/${t.plannedMinutes}m`).join('\n');
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analise minha produtividade baseada nestas tarefas: \n${summary}\n Forneça 3 dicas curtas e acionáveis em Português.`,
+      });
+      setAiInsight(response.text || "Sem insights disponíveis no momento.");
+    } catch (error) {
+      console.error("AI Error:", error);
+      setAiInsight("Não foi possível consultar a IA. Verifique sua chave de API.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const activeTask = useMemo(() => tasks.find(t => t.status === TaskStatus.DOING), [tasks]);
+
+  if (!isLoaded) return null;
+
+  return (
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+      
+      <main className="flex-1 flex flex-col relative overflow-hidden">
+        {activeTask && (
+          <FocusZone task={activeTask} onFinish={() => updateTaskStatus(activeTask.id, TaskStatus.DONE)} />
+        )}
+
+        <div className="flex-1 overflow-y-auto p-8">
+          {activeView === 'board' && (
+            <KanbanBoard 
+              tasks={tasks} 
+              onStatusChange={updateTaskStatus} 
+              onAddTaskClick={() => setIsTaskModalOpen(true)}
+              onEditTask={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }}
+              onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
+            />
+          )}
+
+          {activeView === 'dashboard' && <Dashboard tasks={tasks} />}
+
+          {activeView === 'ai' && (
+             <div className="max-w-4xl mx-auto py-12">
+                <div className="bg-white rounded-3xl p-10 shadow-xl border border-indigo-100">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-2xl">✨</div>
+                    <h2 className="text-3xl font-extrabold text-slate-800">Insights AI</h2>
+                  </div>
+                  <p className="text-slate-600 mb-8 leading-relaxed">Analise seu comportamento produtivo e receba dicas personalizadas do nosso modelo Gemini.</p>
+                  <button 
+                    onClick={handleGenerateAiInsight}
+                    disabled={isAiLoading}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-indigo-100 flex items-center justify-center gap-3"
+                  >
+                    {isAiLoading ? (
+                      <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Analisando...</>
+                    ) : "Gerar Insights"}
+                  </button>
+                  {aiInsight && (
+                    <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 text-slate-700 whitespace-pre-wrap leading-relaxed">
+                      {aiInsight}
+                    </div>
+                  )}
+                </div>
+             </div>
+          )}
+        </div>
+      </main>
+
+      {isTaskModalOpen && (
+        <TaskModal 
+          onClose={() => { setIsTaskModalOpen(false); setEditingTask(null); }} 
+          onSubmit={saveTask}
+          taskToEdit={editingTask || undefined}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Task, Category } from '../types';
+import { Task, Category, TaskStatus } from '../types';
 
 interface DashboardProps {
   tasks: Task[];
@@ -9,7 +8,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ tasks }) => {
   const totalSeconds = tasks.reduce((acc, t) => acc + t.actualSeconds, 0);
   const totalMinutes = Math.floor(totalSeconds / 60);
-  const completedTasks = tasks.filter(t => t.status === 'DONE').length;
+  const completedTasks = tasks.filter(t => t.status === TaskStatus.DONE).length;
   
   const categoryStats = Object.values(Category).map(cat => ({
     name: cat,
@@ -30,7 +29,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks }) => {
         <StatCard 
           title="Tarefas Concluídas" 
           value={completedTasks.toString()} 
-          subtitle="De um total de ${tasks.length}"
+          subtitle={`De um total de ${tasks.length}`}
           color="emerald"
         />
         <StatCard 
@@ -65,7 +64,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks }) => {
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
           <h3 className="text-xl font-bold text-slate-800 mb-6">Execução vs. Planejado</h3>
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-            {tasks.filter(t => t.status === 'DONE').map(task => {
+            {tasks.filter(t => t.status === TaskStatus.DONE).map(task => {
               const diff = (task.actualSeconds / 60) - task.plannedMinutes;
               const isOver = diff > 0;
               return (
@@ -80,7 +79,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks }) => {
                 </div>
               );
             })}
-            {tasks.filter(t => t.status === 'DONE').length === 0 && (
+            {tasks.filter(t => t.status === TaskStatus.DONE).length === 0 && (
               <p className="text-center text-slate-400 italic py-12">Nenhuma tarefa concluída para exibir métricas.</p>
             )}
           </div>

@@ -14,7 +14,9 @@
     "lucide-react": "https://esm.sh/lucide-react@0.446.0?external=react",
     "@google/genai": "https://esm.sh/@google/genai@latest",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "next": "https://esm.sh/next@^16.1.1",
+    "next/": "https://esm.sh/next@^16.1.1/"
   }
 }
 </script>
@@ -24,19 +26,15 @@
         font-family: 'Inter', sans-serif; 
         margin: 0;
         padding: 0;
+        background-color: #f8fafc;
       }
       ::-webkit-scrollbar { width: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      
-      /* Prevenir seleção de texto indesejada em elementos de drag */
-      [draggable="true"] {
-        user-select: none;
-      }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased overflow-hidden">
+<body class="antialiased overflow-hidden">
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
 </body>
