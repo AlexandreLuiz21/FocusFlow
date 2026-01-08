@@ -95,13 +95,14 @@ export default function Home() {
     setIsAiLoading(true);
     setAiInsight('');
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const apiKey = process.env.API_KEY || '';
+      const ai = new GoogleGenAI({ apiKey });
       const summary = tasks.map(t => `- ${t.title}: ${Math.floor(t.actualSeconds/60)}m/${t.plannedMinutes}m`).join('\n');
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Analise minha produtividade baseada nestas tarefas: \n${summary}\n Forneça 3 dicas curtas e acionáveis em Português.`,
       });
-      // Correct text property extraction according to Gemini SDK guidelines
+      
       const text = response.text || "Sem insights disponíveis no momento.";
       setAiInsight(text);
     } catch (error) {
