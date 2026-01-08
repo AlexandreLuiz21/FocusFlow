@@ -95,13 +95,15 @@ export default function Home() {
     setIsAiLoading(true);
     setAiInsight('');
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const summary = tasks.map(t => `- ${t.title}: ${Math.floor(t.actualSeconds/60)}m/${t.plannedMinutes}m`).join('\n');
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Analise minha produtividade baseada nestas tarefas: \n${summary}\n Forneça 3 dicas curtas e acionáveis em Português.`,
       });
-      setAiInsight(response.text || "Sem insights disponíveis no momento.");
+      // Extracting .text property directly as per guidelines
+      const textResult = response.text || "Sem insights disponíveis no momento.";
+      setAiInsight(textResult);
     } catch (error) {
       console.error("AI Error:", error);
       setAiInsight("Não foi possível consultar a IA. Verifique sua chave de API.");
