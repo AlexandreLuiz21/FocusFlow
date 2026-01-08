@@ -95,19 +95,18 @@ export default function Home() {
     setIsAiLoading(true);
     setAiInsight('');
     try {
-      const apiKey = process.env.API_KEY || '';
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       const summary = tasks.map(t => `- ${t.title}: ${Math.floor(t.actualSeconds/60)}m/${t.plannedMinutes}m`).join('\n');
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Analise minha produtividade baseada nestas tarefas: \n${summary}\n Forneça 3 dicas curtas e acionáveis em Português.`,
+        contents: `Analise minha produtividade baseada nestas tarefas: \n${summary}\n Forneça 3 dicas curtas e acionáveis em Português para melhorar meu foco.`,
       });
       
       const text = response.text || "Sem insights disponíveis no momento.";
       setAiInsight(text);
     } catch (error) {
       console.error("AI Error:", error);
-      setAiInsight("Não foi possível consultar a IA. Verifique sua chave de API.");
+      setAiInsight("Não foi possível consultar a IA. Verifique se a chave de API está configurada corretamente.");
     } finally {
       setIsAiLoading(false);
     }
@@ -118,7 +117,7 @@ export default function Home() {
   if (!isLoaded) return null;
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden text-slate-900">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
       
       <main className="flex-1 flex flex-col relative overflow-hidden">
@@ -146,7 +145,7 @@ export default function Home() {
                     <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-2xl">✨</div>
                     <h2 className="text-3xl font-extrabold text-slate-800">Insights AI</h2>
                   </div>
-                  <p className="text-slate-600 mb-8 leading-relaxed">Analise seu comportamento produtivo e receba dicas personalizadas do nosso modelo Gemini.</p>
+                  <p className="text-slate-600 mb-8 leading-relaxed">Analise seu comportamento produtivo e receba dicas personalizadas geradas pelo Gemini.</p>
                   <button 
                     onClick={handleGenerateAiInsight}
                     disabled={isAiLoading}
@@ -157,7 +156,7 @@ export default function Home() {
                     ) : "Gerar Insights"}
                   </button>
                   {aiInsight && (
-                    <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 text-slate-700 whitespace-pre-wrap leading-relaxed">
+                    <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 text-slate-700 whitespace-pre-wrap leading-relaxed animate-in fade-in duration-500">
                       {aiInsight}
                     </div>
                   )}
