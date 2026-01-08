@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { FocusZone } from '../components/FocusZone';
@@ -9,6 +9,15 @@ import { TaskModal } from '../components/TaskModal';
 import { Task, TaskStatus, TaskPriority, Category, FocusSession } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { storage } from '../lib/storage';
+import { NotificationManager } from '../lib/notifications';
+import { Bell, XCircle, Info } from 'lucide-react';
+
+interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error';
+}
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -18,6 +27,10 @@ export default function Home() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [aiInsight, setAiInsight] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
+  
+  // Track tasks already notified in this session to prevent spamming
+  const notifiedTasksRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const savedTasks = storage.getTasks();
@@ -30,6 +43,67 @@ export default function Home() {
       storage.saveTasks(tasks);
     }
   }, [tasks, isLoaded]);
+
+  // Monitoring deadlines
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const checkDeadlines = () => {
+      const now = Date.now();
+      const ONE_HOUR = 60 * 60 * 1000;
+
+      tasks.forEach(task => {
+        if (task.status === TaskStatus.DONE || !task.deadline) return;
+
+        const timeUntilDeadline = task.deadline - now;
+        const taskKey = `${task.id}-${task.deadline}`;
+
+        // Case 1: Overdue
+        if (timeUntilDeadline < 0 && !notifiedTasksRef.current.has(`${taskKey}-overdue`)) {
+          triggerNotification(
+            'Tarefa Atrasada!',
+            `O prazo para "${task.title}" expirou.`,
+            'error',
+            task.id
+          );
+          notifiedTasksRef.current.add(`${taskKey}-overdue`);
+        }
+        // Case 2: Approaching (less than 1 hour)
+        else if (timeUntilDeadline > 0 && timeUntilDeadline < ONE_HOUR && !notifiedTasksRef.current.has(`${taskKey}-approaching`)) {
+          triggerNotification(
+            'Prazo Próximo',
+            `A tarefa "${task.title}" vence em menos de uma hora!`,
+            'warning',
+            task.id
+          );
+          notifiedTasksRef.current.add(`${taskKey}-approaching`);
+        }
+      });
+    };
+
+    const interval = setInterval(checkDeadlines, 60000); // Check every minute
+    checkDeadlines(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [tasks, isLoaded]);
+
+  const triggerNotification = (title: string, message: string, type: 'info' | 'warning' | 'error', taskId?: string) => {
+    // Send Browser Notification
+    NotificationManager.send(title, message);
+
+    // Add In-App Notification
+    const id = crypto.randomUUID();
+    setAppNotifications(prev => [...prev, { id, title, message, type }]);
+
+    // Auto-remove after 8 seconds
+    setTimeout(() => {
+      setAppNotifications(prev => prev.filter(n => n.id !== id));
+    }, 8000);
+  };
+
+  const removeNotification = (id: string) => {
+    setAppNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   const saveTask = (taskData: Partial<Task>) => {
     if (editingTask) {
@@ -124,6 +198,38 @@ export default function Home() {
         {activeTask && (
           <FocusZone task={activeTask} onFinish={() => updateTaskStatus(activeTask.id, TaskStatus.DONE)} />
         )}
+
+        {/* In-App Toast Area */}
+        <div className="fixed top-24 right-8 z-[100] flex flex-col gap-3 pointer-events-none">
+          {appNotifications.map(notification => (
+            <div 
+              key={notification.id}
+              className={`notification-animate pointer-events-auto min-w-[320px] max-w-md p-5 rounded-3xl shadow-2xl border flex items-start gap-4 ${
+                notification.type === 'error' ? 'bg-red-50 border-red-100 text-red-800' :
+                notification.type === 'warning' ? 'bg-amber-50 border-amber-100 text-amber-800' :
+                'bg-white border-slate-200 text-slate-800'
+              }`}
+            >
+              <div className={`mt-1 p-2 rounded-xl ${
+                notification.type === 'error' ? 'bg-red-500 text-white' :
+                notification.type === 'warning' ? 'bg-amber-500 text-white' :
+                'bg-indigo-600 text-white'
+              }`}>
+                <Bell className="w-4 h-4" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-sm leading-tight mb-1">{notification.title}</h4>
+                <p className="text-xs opacity-80 leading-relaxed font-medium">{notification.message}</p>
+              </div>
+              <button 
+                onClick={() => removeNotification(notification.id)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+          ))}
+        </div>
 
         <div className="flex-1 overflow-y-auto p-8">
           {activeView === 'board' && (

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Plus, Trash2 } from 'lucide-react';
 import { Category, TaskPriority, Task, ScheduleSlot } from '../types';
@@ -23,22 +22,33 @@ export const TaskModal: React.FC<TaskModalProps> = ({ onClose, onSubmit, taskToE
 
   useEffect(() => {
     if (taskToEdit) {
+      // Formata a data localmente para o input date
+      let deadlineStr = '';
+      if (taskToEdit.deadline) {
+        const d = new Date(taskToEdit.deadline);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        deadlineStr = `${year}-${month}-${day}`;
+      }
+
       setFormData({
         title: taskToEdit.title,
         description: taskToEdit.description,
         category: taskToEdit.category,
         priority: taskToEdit.priority,
         plannedMinutes: taskToEdit.plannedMinutes,
-        deadline: taskToEdit.deadline ? new Date(taskToEdit.deadline).toISOString().split('T')[0] : '',
+        deadline: deadlineStr,
       });
       setSlots(taskToEdit.scheduledSlots || []);
     }
   }, [taskToEdit]);
 
   const addSlot = () => {
+    const today = new Date();
     const newSlot: ScheduleSlot = {
       id: crypto.randomUUID(),
-      date: new Date().toISOString().split('T')[0],
+      date: today.toISOString().split('T')[0],
       startTime: '09:00',
       endTime: '10:00'
     };
@@ -57,9 +67,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({ onClose, onSubmit, taskToE
     e.preventDefault();
     if (!formData.title.trim()) return;
     
+    // Parse deadline ensuring it represents local midnight
+    let deadlineTimestamp: number | undefined = undefined;
+    if (formData.deadline) {
+      const [year, month, day] = formData.deadline.split('-').map(Number);
+      deadlineTimestamp = new Date(year, month - 1, day).getTime();
+    }
+    
     onSubmit({
       ...formData,
-      deadline: formData.deadline ? new Date(formData.deadline).getTime() : undefined,
+      deadline: deadlineTimestamp,
       scheduledSlots: slots
     });
   };

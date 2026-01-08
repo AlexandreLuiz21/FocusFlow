@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, Calendar, Clock, AlertCircle } from 'lucide-react';
-import { Task, TaskStatus, TaskPriority, Category } from '../types';
+import { Task, TaskStatus, TaskPriority } from '../types';
 import { DeleteModal } from './DeleteModal';
 
 interface KanbanBoardProps {
@@ -37,12 +36,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   const formatDate = (ts: number) => {
-    return new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    // Usar data local para evitar problemas de fuso horário UTC
+    const date = new Date(ts);
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
   const isOverdue = (deadline?: number) => {
     if (!deadline) return false;
-    return deadline < Date.now();
+    // Considera atrasado apenas se já passou o final do dia do prazo
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const deadlineDate = new Date(deadline);
+    deadlineDate.setHours(0, 0, 0, 0);
+    return deadlineDate.getTime() < now.getTime();
   };
 
   const handleConfirmDelete = () => {
@@ -82,79 +88,82 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 onStatusChange(taskId, col.id);
               }}
             >
-              {tasks.filter(t => t.status === col.id).map(task => (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData('taskId', task.id)}
-                  className="group bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 transition-all cursor-grab active:cursor-grabbing relative"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
-                        className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"
-                        title="Editar"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); }}
-                        className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+              {tasks.filter(t => t.status === col.id).map(task => {
+                const overdue = isOverdue(task.deadline);
+                return (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData('taskId', task.id)}
+                    className="group bg-white p-5 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all cursor-grab active:cursor-grabbing relative"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
+                        {task.priority}
+                      </span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <h4 className="font-bold text-slate-800 mb-2 line-clamp-2 leading-snug text-lg">
+                      {task.title}
+                    </h4>
+                    
+                    {/* Deadline Indicator */}
+                    {task.deadline && (
+                      <div className={`flex items-center gap-1.5 mb-3 text-[11px] font-bold transition-colors ${overdue && task.status !== TaskStatus.DONE ? 'text-red-500' : 'text-slate-400'}`}>
+                        <Calendar className="w-4 h-4" />
+                        <span>Prazo: {formatDate(task.deadline)}</span>
+                        {overdue && task.status !== TaskStatus.DONE && <AlertCircle className="w-3.5 h-3.5 animate-pulse" />}
+                      </div>
+                    )}
+
+                    <p className="text-slate-500 text-xs mb-4 line-clamp-2 leading-relaxed">
+                      {task.description || 'Sem descrição definida.'}
+                    </p>
+
+                    {/* Scheduled Slots */}
+                    {task.scheduledSlots && task.scheduledSlots.length > 0 && (
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        {task.scheduledSlots.slice(0, 2).map(s => (
+                          <span key={s.id} className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 border border-indigo-100">
+                            <Clock className="w-3 h-3" />
+                            {s.date.split('-').slice(1).reverse().join('/')} {s.startTime}
+                          </span>
+                        ))}
+                        {task.scheduledSlots.length > 2 && <span className="text-[10px] text-slate-400 font-bold self-center">+{task.scheduledSlots.length - 2}</span>}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
+                      <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg uppercase">
+                        {task.category}
+                      </span>
+                      <span className="text-[11px] font-extrabold text-indigo-600 tabular-nums">
+                        {Math.floor(task.actualSeconds / 60)} / {task.plannedMinutes} min
+                      </span>
                     </div>
                   </div>
-                  
-                  <h4 className="font-semibold text-slate-800 mb-1 line-clamp-2 leading-tight">
-                    {task.title}
-                  </h4>
-                  
-                  {/* Deadline Indicator */}
-                  {task.deadline && (
-                    <div className={`flex items-center gap-1.5 mb-3 text-[10px] font-bold ${isOverdue(task.deadline) ? 'text-red-500' : 'text-slate-400'}`}>
-                      <Calendar className="w-3 h-3" />
-                      Prazo: {formatDate(task.deadline)}
-                      {isOverdue(task.deadline) && task.status !== TaskStatus.DONE && <AlertCircle className="w-3 h-3" />}
-                    </div>
-                  )}
-
-                  <p className="text-slate-500 text-xs mb-4 line-clamp-2 leading-relaxed">
-                    {task.description || 'Sem descrição.'}
-                  </p>
-
-                  {/* Scheduled Slots Count */}
-                  {task.scheduledSlots && task.scheduledSlots.length > 0 && (
-                    <div className="mb-4 flex flex-wrap gap-1">
-                      {task.scheduledSlots.slice(0, 2).map(s => (
-                        <span key={s.id} className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          {s.date.split('-').slice(1).join('/')} {s.startTime}
-                        </span>
-                      ))}
-                      {task.scheduledSlots.length > 2 && <span className="text-[9px] text-slate-400 font-bold">+{task.scheduledSlots.length - 2}</span>}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-50">
-                    <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">
-                      {task.category}
-                    </span>
-                    <span className="text-[10px] font-bold text-indigo-500 flex items-center gap-1">
-                      {Math.floor(task.actualSeconds / 60)} / {task.plannedMinutes} min
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {tasks.filter(t => t.status === col.id).length === 0 && (
-                <div className="h-24 border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center text-slate-400 text-sm italic p-4 text-center">
-                  Solte tarefas aqui
+                <div className="h-32 border-2 border-dashed border-slate-300 rounded-3xl flex items-center justify-center text-slate-400 text-sm italic p-6 text-center leading-relaxed">
+                  Solte tarefas aqui para organizar seu fluxo
                 </div>
               )}
             </div>
