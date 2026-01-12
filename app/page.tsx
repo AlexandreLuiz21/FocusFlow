@@ -29,7 +29,6 @@ export default function Home() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
   
-  // Track tasks already notified in this session to prevent spamming
   const notifiedTasksRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -44,7 +43,6 @@ export default function Home() {
     }
   }, [tasks, isLoaded]);
 
-  // Monitoring deadlines
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -58,7 +56,6 @@ export default function Home() {
         const timeUntilDeadline = task.deadline - now;
         const taskKey = `${task.id}-${task.deadline}`;
 
-        // Case 1: Overdue
         if (timeUntilDeadline < 0 && !notifiedTasksRef.current.has(`${taskKey}-overdue`)) {
           triggerNotification(
             'Tarefa Atrasada!',
@@ -68,7 +65,6 @@ export default function Home() {
           );
           notifiedTasksRef.current.add(`${taskKey}-overdue`);
         }
-        // Case 2: Approaching (less than 1 hour)
         else if (timeUntilDeadline > 0 && timeUntilDeadline < ONE_HOUR && !notifiedTasksRef.current.has(`${taskKey}-approaching`)) {
           triggerNotification(
             'Prazo Próximo',
@@ -81,21 +77,16 @@ export default function Home() {
       });
     };
 
-    const interval = setInterval(checkDeadlines, 60000); // Check every minute
-    checkDeadlines(); // Initial check
+    const interval = setInterval(checkDeadlines, 60000);
+    checkDeadlines();
 
     return () => clearInterval(interval);
   }, [tasks, isLoaded]);
 
   const triggerNotification = (title: string, message: string, type: 'info' | 'warning' | 'error', taskId?: string) => {
-    // Send Browser Notification
     NotificationManager.send(title, message);
-
-    // Add In-App Notification
     const id = crypto.randomUUID();
     setAppNotifications(prev => [...prev, { id, title, message, type }]);
-
-    // Auto-remove after 8 seconds
     setTimeout(() => {
       setAppNotifications(prev => prev.filter(n => n.id !== id));
     }, 8000);
@@ -149,7 +140,7 @@ export default function Home() {
             if (!s.endTime) {
               const end = Date.now();
               const dur = Math.floor((end - s.startTime) / 1000);
-              return { ...s, endTime: end, durationSeconds: dur };
+              return { ...s, endTime: end, durationSeconds: dur, interrupted: newStatus === TaskStatus.PAUSED };
             }
             return s;
           });
@@ -196,10 +187,13 @@ export default function Home() {
       
       <main className="flex-1 flex flex-col relative overflow-hidden">
         {activeTask && (
-          <FocusZone task={activeTask} onFinish={() => updateTaskStatus(activeTask.id, TaskStatus.DONE)} />
+          <FocusZone 
+            task={activeTask} 
+            onFinish={() => updateTaskStatus(activeTask.id, TaskStatus.DONE)} 
+            onPause={() => updateTaskStatus(activeTask.id, TaskStatus.PAUSED)}
+          />
         )}
 
-        {/* In-App Toast Area */}
         <div className="fixed top-24 right-8 z-[100] flex flex-col gap-3 pointer-events-none">
           {appNotifications.map(notification => (
             <div 
@@ -221,10 +215,7 @@ export default function Home() {
                 <h4 className="font-bold text-sm leading-tight mb-1">{notification.title}</h4>
                 <p className="text-xs opacity-80 leading-relaxed font-medium">{notification.message}</p>
               </div>
-              <button 
-                onClick={() => removeNotification(notification.id)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
+              <button onClick={() => removeNotification(notification.id)} className="text-slate-400 hover:text-slate-600 p-1">
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
@@ -252,14 +243,8 @@ export default function Home() {
                     <h2 className="text-3xl font-extrabold text-slate-800">Insights AI</h2>
                   </div>
                   <p className="text-slate-600 mb-8 leading-relaxed">Analise seu comportamento produtivo e receba dicas personalizadas geradas pelo Gemini.</p>
-                  <button 
-                    onClick={handleGenerateAiInsight}
-                    disabled={isAiLoading}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-indigo-100 flex items-center justify-center gap-3"
-                  >
-                    {isAiLoading ? (
-                      <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Analisando...</>
-                    ) : "Gerar Insights"}
+                  <button onClick={handleGenerateAiInsight} disabled={isAiLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50 shadow-lg shadow-indigo-100 flex items-center justify-center gap-3">
+                    {isAiLoading ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Analisando...</> : "Gerar Insights"}
                   </button>
                   {aiInsight && (
                     <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 text-slate-700 whitespace-pre-wrap leading-relaxed animate-in fade-in duration-500">
