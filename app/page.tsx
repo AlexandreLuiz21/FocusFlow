@@ -32,9 +32,21 @@ export default function Home() {
   const notifiedTasksRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const savedTasks = storage.getTasks();
-    setTasks(savedTasks);
+    // Carrega do cache local imediatamente para iniciar rápido
+    const cachedTasks = storage.getTasks();
+    setTasks(cachedTasks);
     setIsLoaded(true);
+
+    // Carrega do banco de dados interno (servidor) para obter o estado oficial
+    storage.fetchTasksFromServer().then(serverTasks => {
+      if (serverTasks && serverTasks.length > 0) {
+        setTasks(serverTasks);
+        // Atualizar cache local com dados frescos do servidor
+        localStorage.setItem('focusflow_tasks', JSON.stringify(serverTasks));
+      }
+    }).catch(err => {
+      console.error('Erro ao sincronizar tarefas com banco de dados interno:', err);
+    });
   }, []);
 
   useEffect(() => {

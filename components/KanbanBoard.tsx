@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Calendar, Clock, AlertCircle, Repeat } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Clock, AlertCircle, Repeat, Search, X } from 'lucide-react';
 import { Task, TaskStatus, TaskPriority } from '../types';
 import { DeleteModal } from './DeleteModal';
 
@@ -19,6 +19,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onDeleteTask
 }) => {
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredTasks = tasks.filter(task => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      task.title.toLowerCase().includes(query) ||
+      (task.description && task.description.toLowerCase().includes(query))
+    );
+  });
 
   const columns = [
     { id: TaskStatus.PLANNED, title: 'Planejado', color: 'bg-slate-100' },
@@ -57,15 +67,47 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   return (
-    <>
-      <div className="flex gap-6 h-full min-w-max pb-8">
+    <div id="kanban-board-root" className="flex flex-col gap-6 h-full pb-8">
+      {/* Search Input Filter Container */}
+      <div id="kanban-search-bar-container" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div id="kanban-search-input-wrapper" className="relative w-full sm:max-w-md">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
+            <Search className="w-5 h-5" />
+          </span>
+          <input
+            type="text"
+            id="kanban-search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar tarefas pelo título ou descrição..."
+            className="w-full pl-11 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-sm font-medium transition-all shadow-sm"
+          />
+          {searchQuery && (
+            <button
+              id="kanban-clear-search-btn"
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 transition-colors"
+              title="Limpar busca"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <span id="kanban-search-results-count" className="text-slate-500 text-xs font-semibold animate-fade-in bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition-colors">
+            {filteredTasks.length} {filteredTasks.length === 1 ? 'tarefa encontrada' : 'tarefas encontradas'}
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-6 h-full min-w-max">
         {columns.map(col => (
           <div key={col.id} className="w-80 flex flex-col h-full">
             <div className="flex items-center justify-between mb-4 px-2">
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-700 uppercase tracking-wider text-xs">{col.title}</h3>
                 <span className="bg-white border border-slate-200 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-400">
-                  {tasks.filter(t => t.status === col.id).length}
+                  {filteredTasks.filter(t => t.status === col.id).length}
                 </span>
               </div>
               {col.id === TaskStatus.PLANNED && (
@@ -86,7 +128,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 onStatusChange(taskId, col.id);
               }}
             >
-              {tasks.filter(t => t.status === col.id).map(task => {
+              {filteredTasks.filter(t => t.status === col.id).map(task => {
                 const overdue = isOverdue(task.deadline);
                 const isRecurring = (task.scheduledSlots?.length || 0) > 5;
                 
@@ -157,6 +199,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           onCancel={() => setTaskToDelete(null)}
         />
       )}
-    </>
+    </div>
   );
 };

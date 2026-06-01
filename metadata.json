@@ -1,5 +1,6 @@
 {
   "name": "FocusFlow",
   "description": "A high-performance task management and focus tracking application designed to eliminate procrastination through real-time execution monitoring and visual discipline.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }
